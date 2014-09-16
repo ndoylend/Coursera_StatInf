@@ -67,11 +67,11 @@ A visual comparison of the empirical density curve with the normal density curve
 An approximation to the 95% confidence interval for the mean of the exponential distribution is given by $\bar{X} \pm 1.96 \frac{S}{\sqrt{n}}$.
 
 ```{r}
-ci <- mean(dat$mean) + c(-1, 1) * 1.96 * mean(dat$sd)/sqrt(n) # CHECK
+ci <- 1/lambda + c(-1, 1) * 1.96 * (1/lambda)/sqrt(n) # CHECK
 coverage <- sum(dat$mean >= ci[1] & dat$mean <= ci[2]) / nsim
 ```
 
-This results in a confidence interval running from `r ci[1]` to `r ci[2]`, which gives a coverage of `r sprintf("%.1f", coverage * 100)`%.
+Using the theoretical value $1/\lambda$ for mean and standard deviation results in a confidence interval running from `r ci[1]` to `r ci[2]`, which gives a coverage of `r sprintf("%.1f", coverage * 100)`%.
 
 \pagebreak
 
@@ -81,7 +81,7 @@ This results in a confidence interval running from `r ci[1]` to `r ci[2]`, which
 
 A similar density plot comparing the empirical and theoretical distributions can be created using ggplot2.
 
-```{r, fig.cap="Density comparison (ggplot2"}
+```{r, fig.cap="Density comparison (ggplot2)"}
 library(ggplot2)
 
 ggplot(dat, aes(x = mean)) + 
@@ -118,7 +118,7 @@ x1 <- max(which(d.plot$x <= ci[1])) # lower boundary
 x2 <- min(which(d.plot$x >= ci[2])) # upper boundary
 
 plot(d.plot, col = "black", lwd = 2, lty = 1,
-     main = "Density of means of 40 samples", ylim = c(0,0.51))
+     main = "Density of means of 40 samples")
 polygon(x = c(d.plot$x[x1], d.plot$x[x1:x2], d.plot$x[x2]),
         y = c(0, d.plot$y[x1:x2], 0), col = "pink")
 text(5, 0.25, "95%\n(approx)")

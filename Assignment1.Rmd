@@ -14,15 +14,17 @@ classoption: a4paper
 
 This document briefly investigates the distributions of means of an exponential distribution. It demonstrates the central limit theorem, which very roughly states that the mean of a large number of independent random variables will be approximately normally distributed. The R markdown source for this document is available on [github](https://github.com/ndoylend/Coursera_StatInf).
 
-# Simulation
-
-```{r}
-set.seed(1) # set random seed for reproducibility
+```{r, echo=FALSE}
+library(ggplot2) # load package ggplot2 for plotting
 ```
+
+# Simulation
 
 The following code create a matrix of 1000 rows of 40 columns of random samples from an exponential distribution with $\lambda = 0.2$. It then creates a dataframe containing the means and standard deviations of the 40 samples. The `apply` function is used to apply the mean and standard deviation functions over the rows of the matrix to give vectors of means and standard deviations from each of the 1000 simulations.
 
 ```{r}
+set.seed(1) # set random seed for reproducibility
+
 n <- 40
 lambda <- 0.2
 nsim <- 1000
@@ -42,36 +44,36 @@ The variance in the empirical distribution is `r var(dat$mean)` while the varian
 
 # Distribution shape
 
-The following code generates a density plot comparing the empirical distribution (solid black line) with the normal distribution (dotted red line). In addition, lines showing the peaks of the distribution are plotted.
+The following code generates a density plot comparing the empirical distribution (solid black line) with the normal distribution (dotted red line). In addition, vertical lines showing the means of the distribution are plotted.
 
-```{r, fig.cap="Density comparison"}
+```{r, fig.cap="Density of means of 40 samples"}
 d.plot <- density(dat$mean)
 
-plot(d.plot, col = "black", lwd = 2, lty = 1,
-     main = "Density of means of 40 samples", ylim = c(0,0.51))
+plot(d.plot, col = "black", lwd = 2, lty = 1, main = "", ylim = c(0,0.51))
 
-d.max <- d.plot$x[which.max(d.plot$y)]
-abline(v = d.max, col = "black", lwd = 2, lty = 1) # peak of empirical distribution
+abline(v = mean(dat$mean), col = "black", lwd = 2, lty = 1) # mean of empirical dist.
 
 xnorm <- seq(min(dat$mean), max(dat$mean), length = 50)
 ynorm <- dnorm(xnorm, mean = 1/lambda, sd = (1/lambda)/sqrt(n))
 lines(xnorm, ynorm, col = "red", lwd = 2, lty = 3)  # normal distribution
 
-abline(v = 1/lambda, col = "red", lwd = 2, lty = 3) # peak of normal distribution
+abline(v = 1/lambda, col = "red", lwd = 2, lty = 3) # mean of normal distribution
 ```
 
-A visual comparison of the empirical density curve with the normal density curve shows that the empirical density is approximately normal. Increasing the number of simulations would reduce the difference between the distributions.
+A visual comparison of the empirical density curve with the normal density curve shows that the empirical density is approximately normal and the means are virtually identical. Increasing the number of simulations would reduce the difference in shape between the distributions.
 
 # Confidence interval
 
-An approximation to the 95% confidence interval for the mean of the exponential distribution is given by $\bar{X} \pm 1.96 \frac{S}{\sqrt{n}}$.
+An approximation to the 95% confidence interval for the mean of the exponential distribution is given by $\bar{X} \pm 1.96 \frac{S}{\sqrt{n}}$. Coverage can be calculated by generating an empirical confidence interval for each of the `r nsim` simulations and calculating how frequently this interval contains the true mean $1/\lambda$.
 
 ```{r}
-ci <- 1/lambda + c(-1, 1) * 1.96 * (1/lambda)/sqrt(n) # CHECK
-coverage <- sum(dat$mean >= ci[1] & dat$mean <= ci[2]) / nsim
+ci.ll <- dat$mean - 1.96 * dat$mean / sqrt(n) # lower CI limit
+ci.ul <- dat$mean + 1.96 * dat$mean / sqrt(n) # upper CI limit
+
+coverage <- sum(1/lambda >= ci.ll & 1/lambda <= ci.ul) / nsim
 ```
 
-Using the theoretical value $1/\lambda$ for mean and standard deviation results in a confidence interval running from `r ci[1]` to `r ci[2]`, which gives a coverage of `r sprintf("%.1f", coverage * 100)`%.
+In this example, the coverage is `r sprintf("%.1f", coverage * 100)`%. This is illustrated by Figure 4, in the appendix.
 
 \pagebreak
 
@@ -79,15 +81,13 @@ Using the theoretical value $1/\lambda$ for mean and standard deviation results 
 
 ## Distribution shape (ggplot2)
 
-A similar density plot comparing the empirical and theoretical distributions can be created using ggplot2.
+Figure 2 simply demonstrates that a similar density plot comparing the empirical and theoretical distributions can be created using ggplot2.
 
-```{r, fig.cap="Density comparison (ggplot2)"}
-library(ggplot2)
-
+```{r, fig.cap="Density of means of 40 samples (ggplot2)", fig.height=3.5}
 ggplot(dat, aes(x = mean)) + 
   geom_density(size = 1, aes(y = ..density..), ylim = c(0, 0.51)) +
-  xlab("Mean") + ylab("Density") + ggtitle("Density of means of 40 samples") +
-  geom_vline(xintercept = d.max, size = 1) + 
+  xlab("Mean") + ylab("Density") +
+  geom_vline(xintercept = mean(dat$mean), size = 1) + 
   stat_function(fun = dnorm, colour = "red", size = 1, linetype = 3,
                 arg = list(mean = 1/lambda,  sd = (1/lambda)/sqrt(n))) +
   geom_vline(xintercept = 1/lambda, colour = "red", size = 1, linetype = 3) +
@@ -105,21 +105,48 @@ qqnorm(y = (dat$mean - mean(dat$mean)) / sd(dat$mean), ylim = c(-3, 3))
 qqline(y = (dat$mean - mean(dat$mean)) / sd(dat$mean))
 ```
 
-The plot is fairly linear, which suggests the distribution of means is approximately normal.
+The plot in Figure 3 is fairly linear, which suggests the distribution of means is approximately normal.
 
 \pagebreak
 
-## Confidence interval plot
+## Confidence interval and coverage
 
-The coverage of the 95% confidence interval can be plotted on the empirical distribution using the `polygon` function.
+Coverage can be illustrated graphically by plotting the empirical confidence intervals for each sample and seeing whether each interval contains the true mean. Figure 4 shows the confidence intervals for the first 100 of the `r nsim` simulations. The true mean, $1/\lambda$ is shown as a dashed horizontal line.
 
-```{r, fig.cap="Confidence interval plot"}
+```{r, fig.cap="Coverage of empirical confidence intervals", fig.height=3.5, fig.width=6}
+
+ggplot(dat, aes(x=1:100, y=mean[1:100], ymin=ci.ll[1:100], ymax=ci.ul[1:100])) +
+    geom_pointrange() +
+    geom_hline(yintercept=1/lambda, col = "red", lty=2, size = 1) +
+    xlab("Sample Number") + ylab("Mean") +
+    theme_bw()
+```
+
+### Alternative calculation
+
+It is possible to calculate another form of coverage based on comparing the empirical means with a theoretical confidence interval around the true mean $1/\lambda$.
+
+```{r, fig.cap="Coverage of theoretical confidence interval", fig.height=3.5, fig.width=3.5}
+ci <- 1/lambda + c(-1, 1) * 1.96 * (1/lambda)/sqrt(n) # CHECK
+coverage <- sum(dat$mean >= ci[1] & dat$mean <= ci[2]) / nsim
+
+ggplot(dat, aes(x=1:100, y=mean[1:100])) +
+  geom_ribbon(aes(ymin=ci[1],ymax=ci[2]), fill = "pink", alpha = 0.5) +  
+  geom_hline(yintercept=1/lambda, col = "red", lty = 2, size = 1) +
+  geom_point() +
+  xlab("Sample Number") + ylab("Mean") +
+  theme_bw()
+```
+
+Using the theoretical value $1/\lambda$ for mean and standard deviation results in a confidence interval running from `r ci[1]` to `r ci[2]`, which gives a coverage of `r sprintf("%.1f", coverage * 100)`%. Figure 5 illustrates this approach for the first 100 of the `r nsim` simulations. The true mean is shown as a dashed horizontal line and its confidence interval is the pink region. This theoretical 95% confidence interval can be plotted on the empirical distribution using the `polygon` function (Figure 6).
+
+```{r, fig.cap="Empirical distribution and theoretical confidence interval", fig.height=4, fig.width=3.5}
 x1 <- max(which(d.plot$x <= ci[1])) # lower boundary
 x2 <- min(which(d.plot$x >= ci[2])) # upper boundary
 
-plot(d.plot, col = "black", lwd = 2, lty = 1,
-     main = "Density of means of 40 samples")
+plot(d.plot, col = "black", lwd = 2, lty = 1, main ="")
 polygon(x = c(d.plot$x[x1], d.plot$x[x1:x2], d.plot$x[x2]),
         y = c(0, d.plot$y[x1:x2], 0), col = "pink")
 text(5, 0.25, "95%\n(approx)")
 ```
+

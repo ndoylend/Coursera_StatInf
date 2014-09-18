@@ -1,0 +1,198 @@
+---
+title: "Statistical Inference: Assignment 2"
+author: "ND"
+date: "17/09/2014"
+output:
+  pdf_document:
+    fig_caption: yes
+documentclass: article
+classoption: a4paper
+---
+
+# Introduction
+
+This document contains a brief analysis of the ToothGrowth dataset provided with R. The dataset contains the results of an experiment to investigate the effect of vitamin C on tooth growth in guinea pigs. The R markdown source for this document is available on [github](https://github.com/ndoylend/Coursera_StatInf).
+
+# Exploratory data analysis
+
+The first step is to load the datasets package using the command `library(datasets)`. This package contains the ToothGrowth dataset and many more besides. The full list can be found using the command `library(help = "datasets")`.
+
+```{r, echo=FALSE}
+library(datasets)
+```
+
+```{r}
+str(ToothGrowth)
+```
+
+Using `str` to display the structure of the dataset reveals a dataframe of three variables: `len`, the measured tooth length; `supp`, a factor indicating supplement type (orange juice or vitamin C); and `dose`, the dose in milligrams. 
+
+```{r}
+with(ToothGrowth, table(dose, supp))
+```
+
+The table of dose values and supplement types confirms that there are 10 observations for each of the six combinations of dose level and supplement type.
+
+Plotting the data is a good way to get a feel for its range and distribution. The following plots are created using ggplot2, loaded with the command `library(ggplot2)`.
+```{r, echo=FALSE}
+library(ggplot2)
+```
+
+```{r, fig.height=4, fig.width=4, fig.cap="Relationship between tooth length and supplement type"}
+ggplot(ToothGrowth, aes(y = len, x = supp)) + geom_boxplot() +
+  xlab("Supplement Type") + ylab("Tooth Length") +
+  theme_bw()
+```
+
+```{r, fig.height=4, fig.width=4, fig.cap="Relationship between tooth length and dose level"}
+ggplot(ToothGrowth, aes(y = len, x = factor(dose))) + geom_boxplot() +
+  xlab("Dose Level") + ylab("Tooth Length") +
+  theme_bw()
+```
+
+\pagebreak
+
+Figure 1 suggests there is a small difference between the two supplement types in terms of measured tooth length. The orange juice group has a greater median tooth length than the vitamin C group. Figure 2 shows a clear relationship between dose level and measured tooth length. As dose level increase, so does the measured tooth length.
+
+Since there are two groups in the dataset it makes sense to use a facet plot that shows the differences between group as well as the differences between dose. The red lines in Figure 3 connect the mean measured tooth length of each dose group. A difference in mean between the two supplement types is evident at the lower dosages. At a dose of 2 mg the means are virtually indistinguishable.
+
+```{r, fig.height=4, fig.width=6, fig.cap="Relationship between tooth length and dose level by supplement type"}
+
+ggplot(ToothGrowth, aes(y = len, x = dose)) + geom_point() +
+  xlab("Dose") + ylab("Tooth Length") + ggtitle("Supplement Type") +
+  stat_summary(fun.y=mean, colour="red", geom="line", aes(group = 1)) +
+  facet_grid(. ~ supp) + 
+  theme_bw()
+```
+
+Further testing is required to investigate the statistical significance of the differences between supplement group and dose level.
+
+# Data summary
+
+The initial data analysis showed the two supplement factors and three dose levels. The mean measured tooth length across all the whole dataset was `r mean(ToothGrowth$len)`, with a standard deviation of `r sd(ToothGrowth$len)`. The means and standard deviations of the length variable for different combinations of supplement and dose are shown in the following summary tables.
+
+```{r, results="asis"}
+library(data.table)
+data <- data.table(ToothGrowth)
+
+library(xtable)
+options(xtable.comment = FALSE)
+
+print(xtable(data[, list(mean=mean(len), sd=sd(len)), by=c("supp")],
+             caption="Mean and standard deviation by supplement type"),
+      include.rownames=FALSE)
+```
+
+The `xtable` package is used to create tidier looking alternatives to the standard output. The `data.table` package is used here simply for its convenient ability to summarise multiple groups by multiple functions. The following tables are generated in the same way as Table 1 (the code may be viewed in the source document).
+
+```{r, echo=FALSE, results="asis"}
+print(xtable(data[, list(mean=mean(len), sd=sd(len)), by=c("dose")],
+             caption="Mean and standard deviation by dose level"),
+      include.rownames=FALSE)
+
+print(xtable(data[, list(mean=mean(len), sd=sd(len)), by=c("dose", "supp")],
+             caption="Mean and standard deviation by dose and supplement type"),
+      include.rownames=FALSE)
+```
+
+# Statistical testing
+
+### Different supplement at all dose levels
+
+The following t.test considers the difference between supplement type in terms of its relationship with mean measured tooth length across all the dose levels (this is the comparison shown in Figure 1). 
+
+```{r}
+t.test(len ~ supp, data = ToothGrowth)
+```
+
+Since the confidence interval includes a small negative region, there is a small chance that the true difference in means is negative, i.e. the VC mean could be larger than the OJ mean, so it is not possible to conclude at the 95% confidence level that that OJ is associated with greater tooth length than VC across all dose levels.
+
+### Different supplement at the same dose level
+
+A set of t-tests were performed to consider the difference between supplement type at each of the three dose levels (this comparison can be made using Figure 3). To avoid cluttering the report with the full output from the t-test function its return values are first assigned to an object and then the required values (lower and upper confidence limits, means and p-values) are copied into the dataframe `t.dose` for output with `xtable` (this code can be seen in the document's source). The test conditions are the same as before: Welch Two Sample t-test with the alternative hypothesis that the true difference in means is not equal to 0.
+
+```{r, echo=FALSE, results="asis"}
+dose05 <- t.test(len ~ supp, data = data[data$dose==0.5])
+dose10 <- t.test(len ~ supp, data = data[data$dose==1.0])
+dose20 <- t.test(len ~ supp, data = data[data$dose==2.0])
+
+# Need to find a less tedious way to assemble the output dataframe:
+t.dose <- data.frame(comparison = rep("OJ and VC",3),
+                     dose = c(0.5,1.0,2.0),
+                     lower = c(dose05$conf.int[1],
+                               dose10$conf.int[1],
+                               dose20$conf.int[1]),
+                     upper = c(dose05$conf.int[2],
+                               dose10$conf.int[2],
+                               dose20$conf.int[2]),
+                     mean.x = c(unname(dose05$estimate[1]),
+                                 unname(dose10$estimate[1]),
+                                 unname(dose20$estimate[1])),
+                     mean.y = c(unname(dose05$estimate[2]),
+                                 unname(dose10$estimate[2]),
+                                 unname(dose20$estimate[2])),
+                     p.value = c(dose05$p.value,
+                                 dose10$p.value,
+                                 dose20$p.value))
+
+print(xtable(t.dose, caption="t-test results comparing supplement types by dose level"),
+      include.rownames=FALSE)
+```
+
+The alternative hypothesis effectively states that the means are different. Table 4 shows the results of the t-tests on the mean tooth length with orange juice (x) and vitamin C (y). At the first two dose levels, the alternative hypothesis can be accepted at the 95% confidence level as the interval is completely above zero. At the 2.0 mg dose level the alternative hypothesis is rejected at the 95% confidence level because the interval includes zero (i.e. there could be no difference in means). The size of the p-values also reflect this.
+
+### Different dose with the same supplement
+
+A final set of t-tests with the same conditions were performed to consider the difference between dose levels for each of the two supplement types (this comparison can also be made using Figure 3).
+
+```{r, echo=FALSE, results="asis"}
+data05.oj <- data[data$dose==0.5 & data$supp=="OJ"]
+data10.oj <- data[data$dose==1.0 & data$supp=="OJ"]
+data20.oj <- data[data$dose==2.0 & data$supp=="OJ"]
+
+dose05.10.oj <- t.test(y = data05.oj$len, x = data10.oj$len)
+dose10.20.oj <- t.test(y = data10.oj$len, x = data20.oj$len)
+
+data20.vc <- data[data$dose==2.0 & data$supp=="VC"]
+data10.vc <- data[data$dose==1.0 & data$supp=="VC"]
+data05.vc <- data[data$dose==0.5 & data$supp=="VC"]
+
+dose05.10.vc <- t.test(y = data05.vc$len, x = data10.vc$len)
+dose10.20.vc <- t.test(y = data10.vc$len, x = data20.vc$len)
+
+# Need to find a less tedious way to assemble the output dataframe:
+t.dose <- data.frame(comparison = rep(c("1.0 mg and 0.5 mg",
+                                    "2.0 mg and 1.0 mg"),2),
+                     supp = c(rep("OJ",2),rep("VC",2)),
+                     lower = c(dose05.10.oj$conf.int[1],
+                               dose10.20.oj$conf.int[1],
+                               dose05.10.vc$conf.int[1],
+                               dose10.20.vc$conf.int[1]),
+                     upper = c(dose05.10.oj$conf.int[2],
+                               dose10.20.oj$conf.int[2],
+                               dose05.10.vc$conf.int[2],
+                               dose10.20.vc$conf.int[2]),
+                     mean.x = c(unname(dose05.10.oj$estimate[1]),
+                               unname(dose10.20.oj$estimate[1]),
+                               unname(dose05.10.vc$estimate[1]),
+                               unname(dose10.20.vc$estimate[1])),
+                     mean.y = c(unname(dose05.10.oj$estimate[2]),
+                               unname(dose10.20.oj$estimate[2]),
+                               unname(dose05.10.vc$estimate[2]),
+                               unname(dose10.20.vc$estimate[2])),
+                     p.value = c(dose05.10.oj$p.value,
+                                 dose10.20.oj$p.value,
+                                 dose05.10.vc$p.value,
+                                 dose10.20.vc$p.value))
+
+print(xtable(t.dose, caption="t-test results comparing dose levels by supplement type"),
+      include.rownames=FALSE)
+```
+
+The results show that in all the cases considered the alternative hypothesis can be accepted; there is a significant difference between the mean tooth length at the two dose levels. The larger of each dose level is associated with the greater tooth length.
+
+# Conclusions and assumptions
+
+Tooth length appears to be associated with both supplement type and dose level. At dosage levels of 0.5 and 1.0 mg, orange juice is associated with greater tooth length than vitamin C. At a dosage level of 2.0 mg there is little difference between orange juice and vitamin C. Within the experiment's range, higher dosage levels are associated with greater tooth length for both supplement types.
+
+To use the t-test is must be assumed that the populations are normally distributed. Due to the central limit theorem the distribution of sample means will approach a Normal distribution as the sample size increases. The shape of the box plots suggests the data are approximately normally distributed but this could be further investigated, for example using q-q plots.

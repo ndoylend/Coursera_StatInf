@@ -65,7 +65,7 @@ ggplot(ToothGrowth, aes(y = len, x = dose)) + geom_point() +
   theme_bw()
 ```
 
-Further testing is required to investigate the statistical significance of the differences between supplement group and dose level.
+Further testing is required to investigate the statistical significance of the differences between supplement group and dose level apparent in Figure 3.
 
 # Data summary
 
@@ -99,7 +99,7 @@ print(xtable(data[, list(mean=mean(len), sd=sd(len)), by=c("dose", "supp")],
 
 ### Different supplement at all dose levels
 
-The following t.test considers the difference between supplement type in terms of its relationship with mean measured tooth length across all the dose levels (this is the comparison shown in Figure 1). 
+The following t.test considers the difference between supplement type in terms of its relationship with mean measured tooth length across all the dose levels (this is the comparison shown in Figure 1). The default two tailed test is used as we are looking for any difference between the means. The experimental design does not appear to use paired samples so the independent test is used.
 
 ```{r}
 t.test(len ~ supp, data = ToothGrowth)
@@ -109,7 +109,7 @@ Since the confidence interval includes a small negative region, there is a small
 
 ### Different supplement at the same dose level
 
-A set of t-tests were performed to consider the difference between supplement type at each of the three dose levels (this comparison can be made using Figure 3). To avoid cluttering the report with the full output from the t-test function its return values are first assigned to an object and then the required values (lower and upper confidence limits, means and p-values) are copied into the dataframe `t.dose` for output with `xtable` (this code can be seen in the document's source). The test conditions are the same as before: Welch Two Sample t-test with the alternative hypothesis that the true difference in means is not equal to 0.
+A set of t-tests were performed to consider the difference between supplement type at each of the three dose levels. To avoid cluttering the report with the full output from the t-test function its return values are first assigned to an object and then the required values (lower and upper confidence limits, means and p-values) are copied into the dataframe `t.dose` for output with `xtable` (this code can be seen in the document's source). The test conditions are the same as before.
 
 ```{r, echo=FALSE, results="asis"}
 dose05 <- t.test(len ~ supp, data = data[data$dose==0.5])
@@ -143,7 +143,7 @@ The alternative hypothesis effectively states that the means are different. Tabl
 
 ### Different dose with the same supplement
 
-A final set of t-tests with the same conditions were performed to consider the difference between dose levels for each of the two supplement types (this comparison can also be made using Figure 3).
+A final set of t-tests with the same conditions were performed to consider the difference between dose levels for each of the two supplement types.
 
 ```{r, echo=FALSE, results="asis"}
 data05.oj <- data[data$dose==0.5 & data$supp=="OJ"]
@@ -195,4 +195,4 @@ The results show that in all the cases considered the alternative hypothesis can
 
 Tooth length appears to be associated with both supplement type and dose level. At dosage levels of 0.5 and 1.0 mg, orange juice is associated with greater tooth length than vitamin C. At a dosage level of 2.0 mg there is little difference between orange juice and vitamin C. Within the experiment's range, higher dosage levels are associated with greater tooth length for both supplement types.
 
-To use the t-test is must be assumed that the populations are normally distributed. Due to the central limit theorem the distribution of sample means will approach a Normal distribution as the sample size increases. The shape of the box plots suggests the data are approximately normally distributed but this could be further investigated, for example using q-q plots.
+To use the t-test it must be assumed that the populations are normally distributed. Due to the central limit theorem the distribution of sample means will approach a Normal distribution as the sample size increases. The shape of the box plots suggests the data are approximately normally distributed but this could be further investigated, for example using q-q plots or formal tests for normality. The default assumption of unequal variances between groups was used (in this exercise this assumption was found to make very little difference to the results).
